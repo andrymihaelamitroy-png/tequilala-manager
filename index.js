@@ -161,7 +161,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setEmoji('💃')
           .setStyle(ButtonStyle.Success)
       );
+// Buscar y eliminar paneles anteriores publicados por el bot
+const mensajes = await canal.messages.fetch({ limit: 100 });
 
+const panelesAnteriores = mensajes.filter((mensaje) => {
+  const titulo = mensaje.embeds[0]?.title;
+
+  return (
+    mensaje.author.id === client.user.id &&
+    titulo === '🍹 Trabaja con nosotros en Tequilala'
+  );
+});
+
+for (const mensaje of panelesAnteriores.values()) {
+  await mensaje.delete().catch(() => null);
+}
       await canal.send({
         embeds: [embed],
         components: [botones]
