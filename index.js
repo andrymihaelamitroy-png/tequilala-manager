@@ -222,6 +222,18 @@ if (
 
   const nombreCanal = `postulacion-${nombreUsuario}`;
 
+  // Comprobar si el usuario ya tiene una postulación abierta
+const ticketExistente = interaction.guild.channels.cache.find(
+  (canal) =>
+    canal.parentId === POSTULACIONES_CATEGORY_ID &&
+    canal.permissionOverwrites.cache.has(interaction.user.id)
+);
+
+if (ticketExistente) {
+  return interaction.editReply({
+    content: `❌ Ya tienes una postulación abierta: ${ticketExistente}`
+  });
+}
   const canalTicket = await interaction.guild.channels.create({
     name: nombreCanal,
     type: ChannelType.GuildText,
