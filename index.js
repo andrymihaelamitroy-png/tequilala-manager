@@ -188,17 +188,17 @@ for (const mensaje of panelesAnteriores.values()) {
       });
     }
 
-    // Respuesta provisional de los botones
-    if (
-      interaction.isButton() &&
-      interaction.customId.startsWith('postulacion_')
-    ) {
-      return interaction.reply({
-        content:
-          '🍹 El sistema de creación de solicitudes estará disponible en el siguiente paso.',
-        ephemeral: true
-      });
-    }
+  // Respuesta provisional de los botones
+if (
+  interaction.isButton() &&
+  interaction.customId.startsWith('postulacion_')
+) {
+  return interaction.reply({
+    content:
+      '🍹 El sistema de creación de solicitudes estará disponible en el siguiente paso.',
+    ephemeral: true
+  });
+}
   } catch (error) {
     console.error('Error procesando la interacción:', error);
 
