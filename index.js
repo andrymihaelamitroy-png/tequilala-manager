@@ -266,6 +266,7 @@ if (ticketExistente) {
     name: nombreCanal,
     type: ChannelType.GuildText,
     parent: POSTULACIONES_CATEGORY_ID,
+     topic: `postulante:${interaction.user.id}`,
     permissionOverwrites: [
       {
         id: interaction.guild.roles.everyone.id,
