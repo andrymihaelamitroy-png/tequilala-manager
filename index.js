@@ -222,11 +222,18 @@ if (
 
   const nombreCanal = `postulacion-${nombreUsuario}`;
 
-  // Comprobar si el usuario ya tiene una postulación abierta
-const ticketExistente = interaction.guild.channels.cache.find(
+ // Actualizar la lista de canales del servidor
+const canalesServidor = await interaction.guild.channels.fetch();
+
+// Comprobar si el usuario ya tiene una postulación abierta
+const ticketExistente = canalesServidor.find(
   (canal) =>
+    canal &&
     canal.parentId === POSTULACIONES_CATEGORY_ID &&
-    canal.permissionOverwrites.cache.has(interaction.user.id)
+    (
+      canal.topic === `postulante:${interaction.user.id}` ||
+      canal.permissionOverwrites?.cache.has(interaction.user.id)
+    )
 );
 
 if (ticketExistente) {
