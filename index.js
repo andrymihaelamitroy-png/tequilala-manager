@@ -416,12 +416,14 @@ client.on(
       // BOTONES DEL PANEL DE POSTULACIONES
       // =====================================
 
-      if (
-        interaction.isButton() &&
-        interaction.customId.startsWith(
-          'postulacion_'
-        )
-      ) {
+  if (
+  interaction.isButton() &&
+  [
+    'postulacion_camarero',
+    'postulacion_portero',
+    'postulacion_bailarin'
+  ].includes(interaction.customId)
+) {
         const codigoPuesto =
           obtenerCodigoPuesto(
             interaction.customId
