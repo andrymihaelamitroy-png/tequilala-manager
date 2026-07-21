@@ -295,6 +295,20 @@ if (
     content: `✅ Tu postulación ha sido creada: ${canalTicket}`
   });
 }
+
+  } catch (error) {
+    console.error('Error procesando la interacción:', error);
+
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({
+        content: '❌ Ha ocurrido un error al procesar la acción.',
+        ephemeral: true
+      });
+    } else if (interaction.deferred) {
+      await interaction.editReply({
+        content: '❌ Ha ocurrido un error al crear la postulación.'
+      }).catch(() => null);
+    }
   }
 });
 
