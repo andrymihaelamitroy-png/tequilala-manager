@@ -10,6 +10,7 @@ const {
   ButtonBuilder,
   ButtonStyle,
   PermissionFlagsBits
+  ChannelType
 } = require('discord.js');
 
 const client = new Client({
