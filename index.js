@@ -107,7 +107,7 @@ function limpiarNombreCanal(nombre) {
   if (!nombreLimpio) {
     nombreLimpio = 'usuario';
   }
-
+  
   return nombreLimpio;
 }
 
