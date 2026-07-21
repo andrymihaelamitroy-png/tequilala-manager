@@ -188,26 +188,113 @@ for (const mensaje of panelesAnteriores.values()) {
       });
     }
 
-  // Respuesta provisional de los botones
+ // Crear ticket privado de postulación
 if (
   interaction.isButton() &&
   interaction.customId.startsWith('postulacion_')
 ) {
-  return interaction.reply({
-    content:
-      '🍹 El sistema de creación de solicitudes estará disponible en el siguiente paso.',
+  await interaction.deferReply({
     ephemeral: true
   });
-}
-  } catch (error) {
-    console.error('Error procesando la interacción:', error);
 
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        content: '❌ Ha ocurrido un error al procesar la acción.',
-        ephemeral: true
-      });
-    }
+  const puestos = {
+    postulacion_camarero: 'Camarero/a',
+    postulacion_portero: 'Portero/a',
+    postulacion_bailarin: 'Bailarín/a'
+  };
+
+  const puestoSeleccionado = puestos[interaction.customId];
+
+  if (!puestoSeleccionado) {
+    return interaction.editReply({
+      content: '❌ No se ha podido identificar el puesto seleccionado.'
+    });
+  }
+
+  const nombreUsuario = interaction.user.username
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 70);
+
+  const nombreCanal = `postulacion-${nombreUsuario}`;
+
+  const canalTicket = await interaction.guild.channels.create({
+    name: nombreCanal,
+    type: ChannelType.GuildText,
+    parent: POSTULACIONES_CATEGORY_ID,
+    permissionOverwrites: [
+      {
+        id: interaction.guild.roles.everyone.id,
+        deny: [PermissionFlagsBits.ViewChannel]
+      },
+      {
+        id: interaction.user.id,
+        allow: [
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.ReadMessageHistory,
+          PermissionFlagsBits.AttachFiles,
+          PermissionFlagsBits.EmbedLinks
+        ]
+      },
+      {
+        id: ENCARGADOS_ROLE_ID,
+        allow: [
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.ReadMessageHistory
+        ]
+      },
+      {
+        id: GERENCIA_ROLE_ID,
+        allow: [
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.ReadMessageHistory
+        ]
+      },
+      {
+        id: client.user.id,
+        allow: [
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.ReadMessageHistory,
+          PermissionFlagsBits.ManageChannels,
+          PermissionFlagsBits.ManageMessages
+        ]
+      }
+    ]
+  });
+
+  const bienvenida = new EmbedBuilder()
+    .setColor(0xE67E22)
+    .setTitle('🍹 Postulación para Tequilala')
+    .setDescription(
+      [
+        `¡Bienvenido/a, ${interaction.user}!`,
+        '',
+        `Has solicitado el puesto de **${puestoSeleccionado}**.`,
+        '',
+        'En el siguiente paso comenzaremos el formulario de postulación.'
+      ].join('\n')
+    )
+    .setFooter({
+      text: 'Tequilala Manager'
+    });
+
+  await canalTicket.send({
+    content: `${interaction.user} <@&${ENCARGADOS_ROLE_ID}> <@&${GERENCIA_ROLE_ID}>`,
+    embeds: [bienvenida]
+  });
+
+  return interaction.editReply({
+    content: `✅ Tu postulación ha sido creada: ${canalTicket}`
+  });
+}
   }
 });
 
