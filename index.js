@@ -225,7 +225,28 @@ if (
  // Actualizar la lista de canales del servidor
 const canalesServidor = await interaction.guild.channels.fetch();
 
+// Actualizar la lista de canales del servidor
+const canalesServidor = await interaction.guild.channels.fetch();
+
+// Actualizar la lista de canales del servidor
+const canalesServidor = await interaction.guild.channels.fetch();
+
 // Comprobar si el usuario ya tiene una postulación abierta
+const ticketExistente = canalesServidor.find(
+  (canal) =>
+    canal &&
+    canal.parentId === POSTULACIONES_CATEGORY_ID &&
+    (
+      canal.topic === `postulante:${interaction.user.id}` ||
+      canal.permissionOverwrites?.cache.has(interaction.user.id)
+    )
+);
+
+if (ticketExistente) {
+  return interaction.editReply({
+    content: `❌ Ya tienes una postulación abierta: ${ticketExistente}`
+  });
+}
 const ticketExistente = canalesServidor.find(
   (canal) =>
     canal &&
