@@ -17,6 +17,7 @@ const {
 } = require('discord.js');
 
 const { createClient } = require('@supabase/supabase-js');
+const WebSocket = require('ws');
 
 // =============================
 // CLIENTE DE DISCORD
@@ -86,16 +87,46 @@ if (!supabaseUrl || !supabaseKey) {
   );
 }
 
-const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseKey || 'placeholder',
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false
+// =============================
+// CONFIGURACIÓN DE SUPABASE
+// =============================
+
+const supabaseUrl =
+  process.env.SUPABASE_URL;
+
+const supabaseServiceRoleKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+let supabase = null;
+
+if (
+  supabaseUrl &&
+  supabaseServiceRoleKey
+) {
+  supabase = createClient(
+    supabaseUrl,
+    supabaseServiceRoleKey,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      },
+
+      realtime: {
+        transport: WebSocket
+      }
     }
-  }
-);
+  );
+
+  console.log(
+    '✅ Supabase configurado correctamente.'
+  );
+} else {
+  console.warn(
+    '⚠️ Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY. El sistema de fichajes no funcionará hasta configurarlas.'
+  );
+}
 
 // =============================
 // COMANDOS
