@@ -31,9 +31,6 @@ process.env.TZ = process.env.TZ || 'Europe/Madrid';
 const supabase =
 process.env.SUPABASE_URL &&
 process.env.SUPABASE_SERVICE_ROLE_KEY
-const supabase =
-process.env.SUPABASE_URL &&
-process.env.SUPABASE_SERVICE_ROLE_KEY
   ? createClient(
       process.env.SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY,
