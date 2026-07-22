@@ -15,7 +15,8 @@ ModalBuilder,
 TextInputBuilder,
 TextInputStyle
 } = require('discord.js');
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require("@supabase/supabase-js");
+const WebSocket = require("ws");
 // =============================
 // CLIENTE DE DISCORD
 // =============================
