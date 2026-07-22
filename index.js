@@ -62,6 +62,7 @@ const BAILARINA_ROLE_ID = '1450612439002382346';
 const PORTERO_ROLE_ID = '1450621997586321509';
 const SUBJEFE_ROLE_ID = '1311766874568261671';
 const JEFE_ROLE_ID = '1311766874568261672';
+const CIUDADANO_ROLE_ID = '1438199088591011971';
 const TORNEOS_CHANNEL_ID = '1453422607243411456';
 const REGISTRO_TORNEOS_CHANNEL_ID = '1529287951958409266';
 const ROLES_QUE_PUEDEN_FICHAR = [
@@ -931,6 +932,28 @@ console.error(
 error
 );
 }
+});
+// =============================
+// ROL AUTOMÁTICO AL ENTRAR
+// =============================
+client.on(Events.GuildMemberAdd, async (member) => {
+  if (member.guild.id !== GUILD_ID || member.user.bot) return;
+
+  try {
+    await member.roles.add(
+      CIUDADANO_ROLE_ID,
+      'Rol de ciudadano asignado automáticamente.'
+    );
+
+    console.log(
+      `Rol de ciudadano asignado a ${member.user.tag}.`
+    );
+  } catch (error) {
+    console.error(
+      `No se pudo asignar Ciudadano a ${member.user.tag}:`,
+      error
+    );
+  }
 });
 // =============================
 // INTERACCIONES
