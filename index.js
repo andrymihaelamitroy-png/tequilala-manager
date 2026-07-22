@@ -31,29 +31,24 @@ process.env.TZ = process.env.TZ || 'Europe/Madrid';
 const supabase =
 process.env.SUPABASE_URL &&
 process.env.SUPABASE_SERVICE_ROLE_KEY
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    realtime: {
-      transport: WebSocket
-    },
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false
-    }
-  }
-);
-ess.env.SUPABASE_SERVICE_ROLE_KEY,
-{
-auth: {
-persistSession: false,
-autoRefreshToken: false
-}
-}
-)
-: null;
+const supabase =
+process.env.SUPABASE_URL &&
+process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      {
+        realtime: {
+          transport: WebSocket
+        },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false
+        }
+      }
+    )
+  : null;
 // =============================
 // CONFIGURACIÓN
 // =============================
