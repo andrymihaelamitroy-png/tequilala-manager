@@ -77,16 +77,6 @@ const ROLES_ADMIN_HORAS = [
 
 const ZONA_HORARIA = 'Europe/Madrid';
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.warn(
-    '⚠️ Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY. ' +
-    'El sistema de fichajes no funcionará hasta configurarlas.'
-  );
-}
-
 // =============================
 // CONFIGURACIÓN DE SUPABASE
 // =============================
