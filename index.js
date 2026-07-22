@@ -262,7 +262,7 @@ function puedeGestionarHoras(member) {
 }
 
 function comprobarSupabase() {
-  return Boolean(supabaseUrl && supabaseKey);
+  return supabase !== null;
 }
 
 function formatearMinutos(minutos) {
