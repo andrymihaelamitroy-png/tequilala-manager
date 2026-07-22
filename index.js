@@ -62,6 +62,8 @@ const BAILARINA_ROLE_ID = '1450612439002382346';
 const PORTERO_ROLE_ID = '1450621997586321509';
 const SUBJEFE_ROLE_ID = '1311766874568261671';
 const JEFE_ROLE_ID = '1311766874568261672';
+const TORNEOS_CHANNEL_ID = '1453422607243411456';
+const REGISTRO_TORNEOS_CHANNEL_ID = '1529287951958409266';
 const ROLES_QUE_PUEDEN_FICHAR = [
 CAMARERO_ROLE_ID,
 BAILARINA_ROLE_ID,
@@ -72,6 +74,12 @@ JEFE_ROLE_ID,
 GERENCIA_ROLE_ID
 ];
 const ROLES_ADMIN_HORAS = [
+SUBJEFE_ROLE_ID,
+JEFE_ROLE_ID,
+GERENCIA_ROLE_ID
+];
+const ROLES_ADMIN_TORNEOS = [
+ENCARGADOS_ROLE_ID,
 SUBJEFE_ROLE_ID,
 JEFE_ROLE_ID,
 GERENCIA_ROLE_ID
@@ -167,6 +175,40 @@ new SlashCommandBuilder()
 new SlashCommandBuilder()
 .setName('personal-activo')
 .setDescription('Muestra quién está actualmente de servicio')
+.toJSON(),
+new SlashCommandBuilder()
+.setName('abrir-torneo')
+.setDescription('Abre las inscripciones de un torneo de boxeo')
+.addIntegerOption((opcion) =>
+opcion
+.setName('limite')
+.setDescription('Máximo de participantes (entre 4 y 32)')
+.setMinValue(4)
+.setMaxValue(32)
+.setRequired(true)
+)
+.toJSON(),
+new SlashCommandBuilder()
+.setName('cerrar-inscripciones')
+.setDescription('Cierra las inscripciones del torneo de boxeo')
+.toJSON(),
+new SlashCommandBuilder()
+.setName('iniciar-torneo')
+.setDescription('Sortea el cuadro e inicia el torneo de boxeo')
+.toJSON(),
+new SlashCommandBuilder()
+.setName('ganador-boxeo')
+.setDescription('Registra al ganador de un combate de la ronda actual')
+.addUserOption((opcion) =>
+opcion
+.setName('ganador')
+.setDescription('Participante que ha ganado su combate')
+.setRequired(true)
+)
+.toJSON(),
+new SlashCommandBuilder()
+.setName('cancelar-torneo')
+.setDescription('Cancela el torneo de boxeo activo')
 .toJSON()
 ];
 // =============================
@@ -636,6 +678,230 @@ await canalRegistro.send({
 embeds: [embedRegistro]
 });
 }
+
+// =============================
+// TORNEOS DE BOXEO
+// =============================
+function puedeGestionarTorneos(interaction) {
+if (!interaction.member?.roles?.cache) return false;
+return interaction.member.permissions.has(PermissionFlagsBits.Administrator) ||
+ROLES_ADMIN_TORNEOS.some((roleId) =>
+interaction.member.roles.cache.has(roleId)
+);
+}
+
+async function obtenerTorneoActivo() {
+comprobarSupabase();
+const { data, error } = await supabase
+.from('tournaments')
+.select('*')
+.eq('guild_id', GUILD_ID)
+.in('status', ['registration', 'closed', 'ongoing'])
+.maybeSingle();
+if (error) throw error;
+return data;
+}
+
+async function obtenerParticipantesTorneo(torneoId) {
+const { data, error } = await supabase
+.from('tournament_participants')
+.select('*')
+.eq('tournament_id', torneoId)
+.order('joined_at', { ascending: true });
+if (error) throw error;
+return data || [];
+}
+
+async function obtenerCombatesTorneo(torneoId, ronda = null) {
+let consulta = supabase
+.from('tournament_matches')
+.select('*')
+.eq('tournament_id', torneoId)
+.order('round_number', { ascending: true })
+.order('match_number', { ascending: true });
+if (ronda !== null) consulta = consulta.eq('round_number', ronda);
+const { data, error } = await consulta;
+if (error) throw error;
+return data || [];
+}
+
+function mezclar(lista) {
+const resultado = [...lista];
+for (let indice = resultado.length - 1; indice > 0; indice -= 1) {
+const aleatorio = Math.floor(Math.random() * (indice + 1));
+[resultado[indice], resultado[aleatorio]] =
+[resultado[aleatorio], resultado[indice]];
+}
+return resultado;
+}
+
+function nombreRonda(ronda, totalRondas) {
+const restantes = totalRondas - ronda;
+if (restantes === 0) return 'Final';
+if (restantes === 1) return 'Semifinal';
+if (restantes === 2) return 'Cuartos de final';
+return `Ronda ${ronda}`;
+}
+
+async function enviarLogTorneo(titulo, descripcion, color = 0xE67E22) {
+const canal = await client.channels
+.fetch(REGISTRO_TORNEOS_CHANNEL_ID)
+.catch(() => null);
+if (!canal || !canal.isTextBased()) return;
+await canal.send({
+embeds: [new EmbedBuilder()
+.setColor(color)
+.setTitle(titulo)
+.setDescription(descripcion)
+.setTimestamp()
+.setFooter({ text: 'Tequilala Manager • Torneos' })]
+});
+}
+
+async function actualizarPanelTorneo(torneo) {
+if (!torneo?.panel_message_id) return;
+const canal = await client.channels.fetch(torneo.panel_channel_id).catch(() => null);
+const mensaje = canal?.isTextBased()
+? await canal.messages.fetch(torneo.panel_message_id).catch(() => null)
+: null;
+if (!mensaje) return;
+const participantes = await obtenerParticipantesTorneo(torneo.id);
+const abierto = torneo.status === 'registration';
+const estados = {
+registration: 'Inscripciones abiertas',
+closed: 'Inscripciones cerradas',
+ongoing: 'En curso',
+completed: 'Finalizado',
+cancelled: 'Cancelado'
+};
+const embed = new EmbedBuilder()
+.setColor(abierto ? 0x2ECC71 : 0xE67E22)
+.setTitle('🥊 Torneo de boxeo de Tequilala')
+.setDescription(abierto
+? 'Pulsa **Inscribirme** para participar o **Cancelar inscripción** para retirarte.'
+: `Estado: **${estados[torneo.status] || torneo.status}**`)
+.addFields(
+{ name: 'Participantes', value: `${participantes.length}/${torneo.max_participants}`, inline: true },
+{ name: 'Estado', value: estados[torneo.status] || torneo.status, inline: true }
+)
+.setTimestamp();
+const botones = new ActionRowBuilder().addComponents(
+new ButtonBuilder()
+.setCustomId('torneo_inscribirme')
+.setLabel('Inscribirme')
+.setStyle(ButtonStyle.Success)
+.setDisabled(!abierto || participantes.length >= torneo.max_participants),
+new ButtonBuilder()
+.setCustomId('torneo_cancelar_inscripcion')
+.setLabel('Cancelar inscripción')
+.setStyle(ButtonStyle.Danger)
+.setDisabled(!abierto)
+);
+await mensaje.edit({ embeds: [embed], components: [botones] });
+}
+
+async function publicarCuadro(torneo) {
+const combates = await obtenerCombatesTorneo(torneo.id);
+const potencia = 2 ** Math.ceil(Math.log2(Math.max(2,
+(await obtenerParticipantesTorneo(torneo.id)).length)));
+const totalRondas = Math.log2(potencia);
+const lineas = [];
+for (const combate of combates) {
+const estado = combate.status === 'completed'
+? `✅ <@${combate.winner_id}>`
+: combate.status === 'bye'
+? `➡️ <@${combate.winner_id}> pasa automáticamente`
+: `<@${combate.player1_id}> **VS** <@${combate.player2_id}>`;
+lineas.push(`**${nombreRonda(combate.round_number, totalRondas)} · Combate ${combate.match_number}**\n${estado}`);
+}
+let descripcion = lineas.join('\n\n');
+if (descripcion.length > 3900) descripcion = `${descripcion.slice(0, 3850)}\n\n…cuadro resumido por límite de Discord.`;
+const embed = new EmbedBuilder()
+.setColor(torneo.status === 'completed' ? 0xF1C40F : 0x3498DB)
+.setTitle(torneo.status === 'completed' ? '🏆 Torneo finalizado' : '🥊 Cuadro del torneo')
+.setDescription(descripcion || 'El cuadro se está preparando.')
+.setTimestamp();
+if (torneo.champion_id) {
+embed.addFields({ name: 'Campeón', value: `<@${torneo.champion_id}>`, inline: false });
+}
+const canal = await client.channels.fetch(TORNEOS_CHANNEL_ID).catch(() => null);
+if (!canal || !canal.isTextBased()) throw new Error('Canal de torneos no disponible.');
+let mensaje = torneo.bracket_message_id
+? await canal.messages.fetch(torneo.bracket_message_id).catch(() => null)
+: null;
+if (mensaje) {
+await mensaje.edit({ embeds: [embed], components: [] });
+} else {
+mensaje = await canal.send({ embeds: [embed] });
+const { error } = await supabase.from('tournaments')
+.update({ bracket_message_id: mensaje.id })
+.eq('id', torneo.id);
+if (error) throw error;
+torneo.bracket_message_id = mensaje.id;
+}
+}
+
+async function crearRonda(torneo, jugadores, numeroRonda) {
+const elementos = [];
+let numeroCombate = 1;
+for (let indice = 0; indice < jugadores.length; indice += 2) {
+const jugador1 = jugadores[indice];
+const jugador2 = jugadores[indice + 1] || null;
+elementos.push({
+tournament_id: torneo.id,
+round_number: numeroRonda,
+match_number: numeroCombate,
+player1_id: jugador1.discord_user_id,
+player1_name: jugador1.discord_username,
+player2_id: jugador2?.discord_user_id || null,
+player2_name: jugador2?.discord_username || null,
+winner_id: jugador2 ? null : jugador1.discord_user_id,
+winner_name: jugador2 ? null : jugador1.discord_username,
+status: jugador2 ? 'pending' : 'bye',
+completed_at: jugador2 ? null : new Date().toISOString()
+});
+numeroCombate += 1;
+}
+const { error } = await supabase.from('tournament_matches').insert(elementos);
+if (error) throw error;
+}
+
+async function avanzarTorneoSiProcede(torneo) {
+const ronda = torneo.current_round;
+const combates = await obtenerCombatesTorneo(torneo.id, ronda);
+if (!combates.length || combates.some((combate) => combate.status === 'pending')) return;
+const ganadores = combates.map((combate) => ({
+discord_user_id: combate.winner_id,
+discord_username: combate.winner_name
+}));
+if (ganadores.length === 1) {
+const campeon = ganadores[0];
+const { error } = await supabase.from('tournaments').update({
+status: 'completed',
+champion_id: campeon.discord_user_id,
+champion_name: campeon.discord_username,
+finished_at: new Date().toISOString()
+}).eq('id', torneo.id);
+if (error) throw error;
+Object.assign(torneo, { status: 'completed', champion_id: campeon.discord_user_id });
+await publicarCuadro(torneo);
+await actualizarPanelTorneo(torneo);
+await enviarLogTorneo('🏆 Campeón del torneo', `<@${campeon.discord_user_id}> ha ganado el torneo.`, 0xF1C40F);
+const usuario = await client.users.fetch(campeon.discord_user_id).catch(() => null);
+await usuario?.send('🏆 ¡Enhorabuena! Has ganado el torneo de boxeo de Tequilala.').catch(() => null);
+return;
+}
+const nuevaRonda = ronda + 1;
+await crearRonda(torneo, ganadores, nuevaRonda);
+const { error } = await supabase.from('tournaments')
+.update({ current_round: nuevaRonda })
+.eq('id', torneo.id);
+if (error) throw error;
+torneo.current_round = nuevaRonda;
+await publicarCuadro(torneo);
+await enviarLogTorneo('Nueva ronda', `Ha comenzado la ronda ${nuevaRonda}.`);
+await avanzarTorneoSiProcede(torneo);
+}
 // =============================
 // INICIO DEL BOT
 // =============================
@@ -673,6 +939,172 @@ client.on(
 Events.InteractionCreate,
 async (interaction) => {
 try {
+// =====================================
+// SISTEMA DE TORNEOS DE BOXEO
+// =====================================
+if (interaction.isChatInputCommand() && interaction.commandName === 'abrir-torneo') {
+if (!puedeGestionarTorneos(interaction)) {
+return interaction.reply({ content: 'No tienes permiso para abrir torneos.', ephemeral: true });
+}
+await interaction.deferReply({ ephemeral: true });
+comprobarSupabase();
+if (await obtenerTorneoActivo()) {
+return interaction.editReply('Ya existe un torneo activo en el servidor.');
+}
+const limite = interaction.options.getInteger('limite', true);
+const canal = await client.channels.fetch(TORNEOS_CHANNEL_ID).catch(() => null);
+if (!canal || !canal.isTextBased()) {
+return interaction.editReply('No se ha encontrado el canal de torneos.');
+}
+const { data: torneo, error } = await supabase.from('tournaments').insert({
+guild_id: GUILD_ID,
+status: 'registration',
+max_participants: limite,
+created_by_id: interaction.user.id,
+created_by_name: interaction.user.username,
+panel_channel_id: TORNEOS_CHANNEL_ID
+}).select().single();
+if (error) throw error;
+const mensaje = await canal.send({ content: 'Preparando el torneo…' });
+const { error: errorPanel } = await supabase.from('tournaments')
+.update({ panel_message_id: mensaje.id })
+.eq('id', torneo.id);
+if (errorPanel) throw errorPanel;
+torneo.panel_message_id = mensaje.id;
+await actualizarPanelTorneo(torneo);
+await enviarLogTorneo('Torneo abierto', `${interaction.user} abrió un torneo para un máximo de **${limite}** participantes.`, 0x2ECC71);
+return interaction.editReply(`Torneo publicado en <#${TORNEOS_CHANNEL_ID}>.`);
+}
+
+if (interaction.isButton() && interaction.customId === 'torneo_inscribirme') {
+await interaction.deferReply({ ephemeral: true });
+const torneo = await obtenerTorneoActivo();
+if (!torneo || torneo.status !== 'registration') return interaction.editReply('Las inscripciones no están abiertas.');
+const participantes = await obtenerParticipantesTorneo(torneo.id);
+if (participantes.some((p) => p.discord_user_id === interaction.user.id)) return interaction.editReply('Ya estás inscrito en este torneo.');
+if (participantes.length >= torneo.max_participants) return interaction.editReply('El torneo ya está completo.');
+const { error } = await supabase.from('tournament_participants').insert({
+tournament_id: torneo.id,
+discord_user_id: interaction.user.id,
+discord_username: interaction.user.username
+});
+if (error) throw error;
+await actualizarPanelTorneo(torneo);
+await enviarLogTorneo('Nueva inscripción', `${interaction.user} se ha inscrito en el torneo.`, 0x2ECC71);
+await interaction.user.send('🥊 Te has inscrito correctamente en el torneo de boxeo de Tequilala.').catch(() => null);
+return interaction.editReply('Te has inscrito correctamente en el torneo.');
+}
+
+if (interaction.isButton() && interaction.customId === 'torneo_cancelar_inscripcion') {
+await interaction.deferReply({ ephemeral: true });
+const torneo = await obtenerTorneoActivo();
+if (!torneo || torneo.status !== 'registration') return interaction.editReply('Las inscripciones no están abiertas.');
+const { data, error } = await supabase.from('tournament_participants')
+.delete().eq('tournament_id', torneo.id)
+.eq('discord_user_id', interaction.user.id).select('id');
+if (error) throw error;
+if (!data?.length) return interaction.editReply('No estabas inscrito en este torneo.');
+await actualizarPanelTorneo(torneo);
+await enviarLogTorneo('Inscripción cancelada', `${interaction.user} ha cancelado su inscripción.`, 0xE74C3C);
+return interaction.editReply('Tu inscripción ha sido cancelada.');
+}
+
+if (interaction.isChatInputCommand() && interaction.commandName === 'cerrar-inscripciones') {
+if (!puedeGestionarTorneos(interaction)) return interaction.reply({ content: 'No tienes permiso para gestionar torneos.', ephemeral: true });
+await interaction.deferReply({ ephemeral: true });
+const torneo = await obtenerTorneoActivo();
+if (!torneo || torneo.status !== 'registration') return interaction.editReply('No hay inscripciones abiertas.');
+const participantes = await obtenerParticipantesTorneo(torneo.id);
+if (participantes.length < 2) return interaction.editReply('Se necesitan al menos 2 participantes para cerrar las inscripciones.');
+const { error } = await supabase.from('tournaments').update({
+status: 'closed', registration_closed_at: new Date().toISOString()
+}).eq('id', torneo.id);
+if (error) throw error;
+torneo.status = 'closed';
+await actualizarPanelTorneo(torneo);
+await enviarLogTorneo('Inscripciones cerradas', `${interaction.user} cerró las inscripciones con **${participantes.length}** participantes.`);
+return interaction.editReply('Inscripciones cerradas correctamente. Usa `/iniciar-torneo` para sortear el cuadro.');
+}
+
+if (interaction.isChatInputCommand() && interaction.commandName === 'iniciar-torneo') {
+if (!puedeGestionarTorneos(interaction)) return interaction.reply({ content: 'No tienes permiso para gestionar torneos.', ephemeral: true });
+await interaction.deferReply({ ephemeral: true });
+const torneo = await obtenerTorneoActivo();
+if (!torneo || torneo.status !== 'closed') return interaction.editReply('Primero debes cerrar las inscripciones.');
+const participantes = mezclar(await obtenerParticipantesTorneo(torneo.id));
+if (participantes.length < 2) return interaction.editReply('Se necesitan al menos 2 participantes.');
+const potencia = 2 ** Math.ceil(Math.log2(participantes.length));
+const jugadores = [...participantes];
+while (jugadores.length < potencia) jugadores.push(null);
+const ordenados = [];
+const reales = jugadores.filter(Boolean);
+const numeroByes = potencia - participantes.length;
+for (let indice = 0; indice < numeroByes; indice += 1) ordenados.push(reales.shift(), null);
+ordenados.push(...reales);
+await crearRonda(torneo, ordenados.filter((jugador, indice) => jugador || ordenados[indice - 1]), 1);
+const { error } = await supabase.from('tournaments').update({
+status: 'ongoing', current_round: 1, started_at: new Date().toISOString()
+}).eq('id', torneo.id);
+if (error) throw error;
+Object.assign(torneo, { status: 'ongoing', current_round: 1 });
+await actualizarPanelTorneo(torneo);
+await publicarCuadro(torneo);
+await enviarLogTorneo('Torneo iniciado', `${interaction.user} inició el torneo con **${participantes.length}** participantes.`);
+for (const participante of participantes) {
+const usuario = await client.users.fetch(participante.discord_user_id).catch(() => null);
+await usuario?.send('🥊 El torneo de boxeo de Tequilala ha comenzado. Consulta el cuadro en el servidor.').catch(() => null);
+}
+await avanzarTorneoSiProcede(torneo);
+return interaction.editReply('Torneo iniciado y cuadro publicado correctamente.');
+}
+
+if (interaction.isChatInputCommand() && interaction.commandName === 'ganador-boxeo') {
+if (!puedeGestionarTorneos(interaction)) return interaction.reply({ content: 'No tienes permiso para registrar ganadores.', ephemeral: true });
+await interaction.deferReply({ ephemeral: true });
+const torneo = await obtenerTorneoActivo();
+if (!torneo || torneo.status !== 'ongoing') return interaction.editReply('No hay ningún torneo en curso.');
+const ganador = interaction.options.getUser('ganador', true);
+const combates = await obtenerCombatesTorneo(torneo.id, torneo.current_round);
+const combate = combates.find((item) => item.status === 'pending' &&
+(item.player1_id === ganador.id || item.player2_id === ganador.id));
+if (!combate) return interaction.editReply('Ese usuario no tiene un combate pendiente en la ronda actual.');
+const { error } = await supabase.from('tournament_matches').update({
+winner_id: ganador.id,
+winner_name: ganador.username,
+status: 'completed',
+completed_at: new Date().toISOString()
+}).eq('id', combate.id);
+if (error) throw error;
+await enviarLogTorneo('Ganador registrado', `${interaction.user} registró a ${ganador} como ganador del combate **${combate.match_number}**, ronda **${torneo.current_round}**.`, 0x2ECC71);
+await ganador.send('✅ Has sido registrado como ganador de tu combate.').catch(() => null);
+const perdedorId = combate.player1_id === ganador.id ? combate.player2_id : combate.player1_id;
+const perdedor = await client.users.fetch(perdedorId).catch(() => null);
+await perdedor?.send('Has quedado eliminado del torneo de boxeo de Tequilala. Gracias por participar.').catch(() => null);
+await publicarCuadro(torneo);
+await avanzarTorneoSiProcede(torneo);
+return interaction.editReply(`${ganador} ha sido registrado como ganador.`);
+}
+
+if (interaction.isChatInputCommand() && interaction.commandName === 'cancelar-torneo') {
+if (!puedeGestionarTorneos(interaction)) return interaction.reply({ content: 'No tienes permiso para cancelar torneos.', ephemeral: true });
+await interaction.deferReply({ ephemeral: true });
+const torneo = await obtenerTorneoActivo();
+if (!torneo) return interaction.editReply('No hay ningún torneo activo.');
+const participantes = await obtenerParticipantesTorneo(torneo.id);
+const { error } = await supabase.from('tournaments').update({
+status: 'cancelled', finished_at: new Date().toISOString()
+}).eq('id', torneo.id);
+if (error) throw error;
+torneo.status = 'cancelled';
+await actualizarPanelTorneo(torneo);
+await enviarLogTorneo('Torneo cancelado', `${interaction.user} ha cancelado el torneo.`, 0xE74C3C);
+for (const participante of participantes) {
+const usuario = await client.users.fetch(participante.discord_user_id).catch(() => null);
+await usuario?.send('❌ El torneo de boxeo de Tequilala ha sido cancelado.').catch(() => null);
+}
+return interaction.editReply('Torneo cancelado correctamente.');
+}
+
 // =====================================
 // SISTEMA DE FICHAJE
 // =====================================
