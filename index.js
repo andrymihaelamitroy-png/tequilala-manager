@@ -1930,7 +1930,7 @@ ephemeral: true
 });
 }
 if (
-embedAnterior.title?.trim() !==
+mensajeFormulario.embeds[0]?.title?.trim() !==
 'Formulario de postulación en curso'
 ) {
 return interaction.reply({
@@ -2064,8 +2064,8 @@ content:
 const embedAnterior =
 mensajeFormulario.embeds[0];
 if (
-embedAnterior.title !==
-' Formulario de postulación en curso'
+embedAnterior.title?.trim() !==
+'Formulario de postulación en curso'
 ) {
 return interaction.editReply({
 content:
