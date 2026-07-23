@@ -1171,22 +1171,18 @@ const botones = new ActionRowBuilder().addComponents(
 new ButtonBuilder()
 .setCustomId('fichaje_iniciar')
 .setLabel('Iniciar turno')
-.setEmoji('')
 .setStyle(ButtonStyle.Success),
 new ButtonBuilder()
 .setCustomId('fichaje_finalizar')
 .setLabel('Finalizar turno')
-.setEmoji('')
 .setStyle(ButtonStyle.Danger),
 new ButtonBuilder()
 .setCustomId('fichaje_mis_horas')
 .setLabel('Ver mis horas')
-.setEmoji('')
 .setStyle(ButtonStyle.Primary),
 new ButtonBuilder()
 .setCustomId('fichaje_por_dia')
 .setLabel('Horas por día')
-.setEmoji('')
 .setStyle(ButtonStyle.Secondary)
 );
 const mensajes = await canal.messages.fetch({ limit: 100 });
@@ -1552,21 +1548,18 @@ new ButtonBuilder()
 'postulacion_camarero'
 )
 .setLabel('Camarero/a')
-.setEmoji('')
 .setStyle(ButtonStyle.Primary),
 new ButtonBuilder()
 .setCustomId(
 'postulacion_portero'
 )
 .setLabel('Portero/a')
-.setEmoji('')
 .setStyle(ButtonStyle.Secondary),
 new ButtonBuilder()
 .setCustomId(
 'postulacion_bailarin'
 )
 .setLabel('Bailarín/a')
-.setEmoji('')
 .setStyle(ButtonStyle.Success)
 );
 const mensajes =
@@ -1873,7 +1866,6 @@ new ButtonBuilder()
 .setLabel(
 'Continuar formulario'
 )
-.setEmoji('')
 .setStyle(ButtonStyle.Primary)
 );
 await canalTicket.send({
@@ -2183,21 +2175,18 @@ new ButtonBuilder()
 'postulacion_aceptar'
 )
 .setLabel('Aceptar')
-.setEmoji('')
 .setStyle(ButtonStyle.Success),
 new ButtonBuilder()
 .setCustomId(
 'postulacion_rechazar'
 )
 .setLabel('Rechazar')
-.setEmoji('')
 .setStyle(ButtonStyle.Danger),
 new ButtonBuilder()
 .setCustomId(
 'postulacion_cerrar'
 )
 .setLabel('Cerrar ticket')
-.setEmoji('')
 .setStyle(ButtonStyle.Secondary)
 );
 await mensajeFormulario.edit({
@@ -2303,7 +2292,6 @@ new ButtonBuilder()
 'postulacion_cerrar'
 )
 .setLabel('Cerrar ticket')
-.setEmoji('')
 .setStyle(ButtonStyle.Secondary)
 );
 await mensajeFormulario.edit({
@@ -2413,7 +2401,6 @@ new ButtonBuilder()
 'postulacion_cerrar'
 )
 .setLabel('Cerrar ticket')
-.setEmoji('')
 .setStyle(ButtonStyle.Secondary)
 );
 await mensajeFormulario.edit({
