@@ -607,12 +607,12 @@ limit: 100
 });
 return mensajes.find((mensaje) => {
 if (mensaje.author.id !== client.user.id) return false;
-const titulo = mensaje.embeds[0]?.title;
+const titulo = mensaje.embeds[0]?.title?.trim();
 return (
-titulo === ' Formulario de postulación en curso' ||
-titulo === ' Nueva postulación' ||
-titulo === ' Postulación aceptada' ||
-titulo === ' Postulación rechazada'
+titulo === 'Formulario de postulación en curso' ||
+titulo === 'Nueva postulación' ||
+titulo === 'Postulación aceptada' ||
+titulo === 'Postulación rechazada'
 );
 });
 }
@@ -1930,8 +1930,8 @@ ephemeral: true
 });
 }
 if (
-mensajeFormulario.embeds[0]?.title !==
-' Formulario de postulación en curso'
+embedAnterior.title?.trim() !==
+'Formulario de postulación en curso'
 ) {
 return interaction.reply({
 content:
